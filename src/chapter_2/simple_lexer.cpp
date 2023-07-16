@@ -132,7 +132,15 @@ public:
 private:
     const char &next_input_char()
     {
+        if (peek_ == '\0')
+        {
+            throw "invalid syntax: unexpected end of text";
+        }
         return input_str_[++p_];
+    }
+    const char &peek_ahead()
+    {
+        return input_str_[p_ + 1];
     }
 
 public:
@@ -151,18 +159,61 @@ public:
             {
                 line_++;
             }
-            else if (peek_ == '\0')
-            {
-                return false;
-            }
+
             else
             {
                 break;
             }
         }
 
-        // Step 2: Actual parsing of a token
+        // Step 2: Ignore comments
+        if (peek_ == '/')
+        {
+            if (peek_ahead() == '/')
+            {
+                // ignore line
+                while (peek_ != '\n' && peek_ != '\0')
+                {
+                    peek_ = next_input_char();
+                }
+            }
+            else if (peek_ahead() == '*')
+            {
+                // ignore until "*/"
+                peek_ = next_input_char();
+                do
+                {
+                    peek_ = next_input_char();
+                } while (peek_ != '*');
+                peek_ = next_input_char();
+                if (peek_ != '/')
+                {
+                    throw "invalid syntax: expected \"*/\" after \"/*\"";
+                }
+                peek_ = next_input_char();
+            }
+        }
 
+        if (peek_ == '\0')
+        {
+            return false;
+        }
+
+        // Step 3: Actual parsing of a token
+
+        // Floats
+        if (peek_ == '.' && std::isdigit(peek_ahead()))
+        {
+            std::string buf;
+            do
+            {
+                buf.push_back(peek_);
+                peek_ = next_input_char();
+            } while (std::isdigit(peek_));
+            float value = std::stof(buf);
+            p = std::make_unique<token::Float>(value);
+            return true;
+        }
         // Integers and floats
         if (std::isdigit(peek_))
         {
@@ -231,9 +282,16 @@ int main()
 
     std::unique_ptr<token::Token> tok;
 
-    while (lex.scan(tok))
+    try
     {
-        std::cout << (*tok) << '\t';
+        while (lex.scan(tok))
+        {
+            std::cout << (*tok) << '\t';
+        }
+    }
+    catch (const char *err)
+    {
+        std::cout << "Exception: " << err << std::endl;
     }
 
     return 0;
