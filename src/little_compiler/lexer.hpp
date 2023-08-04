@@ -6,10 +6,8 @@
 enum class TokenTag
 {
     id,
-    symbol,
-    val_bool,
-    val_int,
-    val_float,
+    binary_op,
+    val,
     eof,
     bad
 };
@@ -21,14 +19,10 @@ std::ostream &operator<<(std::ostream &os, TokenTag tag)
     {
     case TokenTag::id:
         return os << "id";
-    case TokenTag::symbol:
-        return os << "symbol";
-    case TokenTag::val_bool:
-        return os << "val_bool";
-    case TokenTag::val_int:
-        return os << "val_int";
-    case TokenTag::val_float:
-        return os << "val_float";
+    case TokenTag::binary_op:
+        return os << "binary_op";
+    case TokenTag::val:
+        return os << "val";
     case TokenTag::eof:
         return os << "eof";
     case TokenTag::bad:
@@ -150,9 +144,9 @@ public:
                 buf.push_back(peek_);
                 peek_ = next_input_char();
             } while (std::isdigit(peek_));
-            return Token(TokenTag::val_float, buf);
+            return Token(TokenTag::val, buf);
         }
-        // Integers and floats
+        // Integers or floats
         if (std::isdigit(peek_))
         {
             bool is_float = false;
@@ -168,14 +162,8 @@ public:
                     peek_ = next_input_char();
                 }
             } while (std::isdigit(peek_));
-            if (is_float)
-            {
-                return Token(TokenTag::val_float, buf);
-            }
-            else
-            {
-                return Token(TokenTag::val_int, buf);
-            }
+
+            return Token(TokenTag::val, buf);
         }
         // Identifiers
         if (std::isalpha(peek_))
@@ -191,11 +179,11 @@ public:
         }
         if (peek_ == '+' || peek_ == '-' || peek_ == '*' || peek_ == '/' || peek_ == '=')
         {
-            Token tok = Token(TokenTag::symbol, peek_);
+            Token tok = Token(TokenTag::binary_op, peek_);
             peek_ = next_input_char();
             return tok;
         }
-        // Treat any unknown character as "bad"
+        // Treat any unknown character as a bad token
         else
         {
             std::string val(1, peek_);

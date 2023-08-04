@@ -28,16 +28,19 @@ struct SyntaxNode
     SyntaxTag tag_;
 
     // Print all children recursively
-    void print(std::ostream &out) const
+    void print(std::ostream &out, std::string indent = "", bool is_last = true) const
     {
-        out << this->tok_;
+        std::string marker = is_last ? "'---" : "|---";
+        out << indent;
+        out << marker;
+        out << this->tok_ << "\n";
+
+        indent += is_last ? "    " : "|   ";
         for (const auto &child : this->get_children())
         {
-            out << *child;
+            child->print(out, indent, child == this->get_children().back());
         }
     }
-
-    // std::vector<std::unique_ptr<SyntaxNode>> children_;
 };
 
 // Print support for SyntaxNode
@@ -119,27 +122,24 @@ private:
 
     std::unique_ptr<SyntaxNode> parse_primary_expression()
     {
-        Token tok = match(TokenTag::val_int);
+        Token tok = match(TokenTag::val);
         return std::make_unique<Expression>(tok);
     }
 
 public:
     std::unique_ptr<SyntaxNode> parse()
     {
-        auto expr = parse_primary_expression();
-        while (current().val_ == "+")
+        auto left = parse_primary_expression();
+        while (current().tag_ == TokenTag::binary_op)
         {
-            std::cout << "PARSING binary" << std::endl;
-            std::cout << "LEFT " << expr->tok_ << std::endl;
 
             auto op = current();
             next();
             auto right = parse_primary_expression();
-            std::cout << "RIGHT " << right->tok_ << std::endl;
 
-            return std::make_unique<BinaryExpression>(std::move(expr), op, std::move(right));
+            left = std::make_unique<BinaryExpression>(std::move(left), op, std::move(right));
         }
-        return expr;
+        return left;
     }
 
 private:
