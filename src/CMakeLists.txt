@@ -3,6 +3,4 @@ project("Compiler_Project")
 
 add_subdirectory("chapter_2")
 add_subdirectory("chapter_3")
-
-add_executable("little_compiler" "little_compiler.cpp")
-
+add_subdirectory("little_compiler")
