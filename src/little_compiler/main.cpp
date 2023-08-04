@@ -4,37 +4,42 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 
-int main()
+int main(int argc, char *argv[])
 {
-    std::string input_buffer;
 
-    std::cout << "Give an input string:" << std::endl;
-    std::getline(std::cin, input_buffer);
-
-    Lexer lex(input_buffer);
-    std::vector<Token> tokens;
-
-    try
+    if (argc < 2)
     {
-        Token tok;
-        do
-        {
-            tok = lex.next_token();
-            tokens.push_back(tok);
-            std::cout << tok << '\t';
-        } while (tok.tag_ != TokenTag::bad && tok.tag_ != TokenTag::eof);
+        std::cout << "No input file" << std::endl;
+        return -1;
     }
-    catch (const char *err)
+
+    std::cout << argv[0] << std::endl;
+    std::cout << "Input file: " << argv[1] << std::endl;
+    std::ifstream file(argv[1]);
+
+    std::string line;
+    Lexer lexer;
+    Parser parser;
+
+    while (std::getline(file, line))
     {
-        std::cout << "Exception: " << err << std::endl;
+        std::cout << line << '\n'
+                  << std::endl;
+
+        // Tokenize line
+        std::vector<Token> tokens = lexer.tokenize_line(std::move(line));
+
+        // Parse tokens
+        auto root = parser.parse(std::move(tokens));
+
+        // Print result
+        std::cout << *root << std::endl;
+
+        // Print diagnostics
+        parser.print_diagnostics(std::cout);
     }
-    std::cout << std::endl;
-
-    Parser parser(std::move(tokens));
-    auto root = parser.parse();
-
-    std::cout << *root << std::endl;
 
     return 0;
 }

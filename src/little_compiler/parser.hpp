@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <sstream>
 
 // Describes the type of node in the AST
 enum class SyntaxTag
@@ -22,6 +23,7 @@ struct SyntaxNode
     {
     }
 
+    // TOFIX: return something more efficient
     virtual std::vector<std::shared_ptr<SyntaxNode>> get_children() const = 0;
 
     Token tok_;
@@ -65,17 +67,11 @@ struct Expression : SyntaxNode
 struct BinaryExpression : SyntaxNode
 {
     // Must use some kind of ptr, because of inheritance
-    // (children may be any class that inherits fron SyntaxNode)
+    // (children may be any class that inherits from SyntaxNode)
     using ptr_type = std::shared_ptr<SyntaxNode>;
 
-    // // Assume ownership
-    // BinaryExpression(SyntaxNode *left, Token op, SyntaxNode *right)
-    //     : SyntaxNode(SyntaxTag::binary_expression), left_(left), op_(op), right_(right)
-    // {
-    // }
-
-    BinaryExpression(ptr_type &&left, Token op, ptr_type &&right)
-        : SyntaxNode(op, SyntaxTag::binary_expression), left_(std::move(left)), right_(std::move(right))
+    BinaryExpression(ptr_type left, Token &op, ptr_type right)
+        : SyntaxNode(op, SyntaxTag::binary_expression), left_(left), right_(right)
     {
     }
 
@@ -90,8 +86,6 @@ struct BinaryExpression : SyntaxNode
 
 class Parser
 {
-public:
-    Parser(std::vector<Token> &&tokens) : tokens_(tokens), p_(0) {}
 
 private:
     Token &peek(int offset)
@@ -110,14 +104,19 @@ private:
         return tokens_[p_++];
     }
 
+    // TOFIX: return reference
     Token match(TokenTag tag)
     {
         if (current().tag_ == tag)
         {
             return next();
         }
+        std::stringstream err;
+        err << "Error: unexpected token (" << current() << ") at (" << current().line_count_ << ", "
+            << current().char_count_ << "), expected <" << tag << "> type";
+        diagnostics_.emplace_back(err.str());
         // return bad token if no match
-        return Token(TokenTag::bad);
+        return Token(TokenTag::bad, current().line_count_, current().char_count_);
     }
 
     std::unique_ptr<SyntaxNode> parse_primary_expression()
@@ -127,13 +126,16 @@ private:
     }
 
 public:
-    std::unique_ptr<SyntaxNode> parse()
+    std::unique_ptr<SyntaxNode> parse(std::vector<Token> &&tokens)
     {
+        tokens_ = std::move(tokens);
+        p_ = 0;
+
         auto left = parse_primary_expression();
         while (current().tag_ == TokenTag::binary_op)
         {
 
-            auto op = current();
+            Token &op = current();
             next();
             auto right = parse_primary_expression();
 
@@ -142,7 +144,21 @@ public:
         return left;
     }
 
+    void print_diagnostics(std::ostream &out)
+    {
+        if (!diagnostics_.empty())
+        {
+            out << "Parser diagnostics:" << std::endl;
+            for (auto &msg : diagnostics_)
+            {
+                out << msg << std::endl;
+            }
+            diagnostics_.clear();
+        }
+    }
+
 private:
     std::vector<Token> tokens_;
     size_t p_;
+    std::vector<std::string> diagnostics_;
 };

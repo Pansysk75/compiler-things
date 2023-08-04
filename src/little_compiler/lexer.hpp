@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <sstream>
+#include <vector>
 
 // Types of tokens
 enum class TokenTag
@@ -34,17 +36,32 @@ std::ostream &operator<<(std::ostream &os, TokenTag tag)
 struct Token
 {
     Token() : tag_(TokenTag::bad) {}
-    Token(TokenTag tag) : tag_(tag) {}
-    Token(TokenTag tag, char &val) : tag_(tag), val_(1, val) {}
-    Token(TokenTag tag, std::string val) : tag_(tag), val_(val) {}
+
+    Token(TokenTag tag, unsigned int line_count, unsigned int char_count)
+        : tag_(tag), line_count_(line_count), char_count_(char_count) {}
+
+    Token(TokenTag tag, char &val, unsigned int line_count, unsigned int char_count)
+        : tag_(tag), val_(1, val), line_count_(line_count), char_count_(char_count) {}
+
+    Token(TokenTag tag, std::string val, unsigned int line_count, unsigned int char_count)
+        : tag_(tag), val_(val), line_count_(line_count), char_count_(char_count) {}
 
     void print(std::ostream &out) const
     {
-        out << " <" << tag_ << ", " << val_ << "> ";
+        if (tag_ == TokenTag::bad || tag_ == TokenTag::eof)
+        {
+            out << "<" << tag_ << ">";
+        }
+        else
+        {
+            out << "<" << val_ << ">";
+        }
     }
 
     TokenTag tag_;
     std::string val_;
+    unsigned int line_count_;
+    unsigned int char_count_;
 };
 
 // Print support for tokens
@@ -57,11 +74,9 @@ std::ostream &operator<<(std::ostream &out, const Token &tok)
 // Takes raw text as input and extracts token one at a time, from left to right.
 class Lexer
 {
+
 public:
-    Lexer(std::string &input_str)
-        : input_str_(input_str), peek_(input_str[0]), p_(0), line_(0)
-    {
-    }
+    Lexer() : line_(0), p_(0) {}
 
 private:
     const char &next_input_char()
@@ -130,7 +145,7 @@ public:
 
         if (peek_ == '\0')
         {
-            return Token(TokenTag::eof);
+            return Token(TokenTag::eof, line_, p_);
         }
 
         // Step 3: Actual parsing of a token
@@ -144,7 +159,7 @@ public:
                 buf.push_back(peek_);
                 peek_ = next_input_char();
             } while (std::isdigit(peek_));
-            return Token(TokenTag::val, buf);
+            return Token(TokenTag::val, buf, line_, p_);
         }
         // Integers or floats
         if (std::isdigit(peek_))
@@ -163,7 +178,7 @@ public:
                 }
             } while (std::isdigit(peek_));
 
-            return Token(TokenTag::val, buf);
+            return Token(TokenTag::val, buf, line_, p_);
         }
         // Identifiers
         if (std::isalpha(peek_))
@@ -175,11 +190,11 @@ public:
                 peek_ = next_input_char();
             } while (std::isalnum(peek_));
 
-            return Token(TokenTag::id, buf);
+            return Token(TokenTag::id, buf, line_, p_);
         }
         if (peek_ == '+' || peek_ == '-' || peek_ == '*' || peek_ == '/' || peek_ == '=')
         {
-            Token tok = Token(TokenTag::binary_op, peek_);
+            Token tok = Token(TokenTag::binary_op, peek_, line_, p_);
             peek_ = next_input_char();
             return tok;
         }
@@ -188,12 +203,41 @@ public:
         {
             std::string val(1, peek_);
             peek_ = next_input_char();
-            return Token(TokenTag::bad, val);
+            return Token(TokenTag::bad, val, line_, p_);
         }
     }
 
+    std::vector<Token> tokenize_line(std::string &&next_line)
+    {
+        input_str_ = std::move(next_line);
+        peek_ = input_str_[0];
+        p_ = 0;
+
+        std::vector<Token> tokens;
+
+        try
+        {
+            Token tok;
+            do
+            {
+                tok = this->next_token();
+                tokens.push_back(tok);
+                std::cout << tok << ' ';
+            } while (tok.tag_ != TokenTag::bad && tok.tag_ != TokenTag::eof);
+        }
+        catch (const char *err)
+        {
+            std::cout << "Exception: " << err << std::endl;
+        }
+        std::cout << std::endl;
+
+        line_++;
+
+        return std::move(tokens);
+    }
+
 private:
-    char &peek_;
+    char peek_;
     std::string input_str_;
     unsigned int p_; // Pointer to current element in input_str_
     unsigned int line_;
