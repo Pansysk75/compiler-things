@@ -14,12 +14,13 @@ enum class SyntaxTag
     parenthesized_expression
 };
 
-struct SyntaxNode;
+class SyntaxNode;
 std::ostream &operator<<(std::ostream &out, const SyntaxNode &node);
 
 // A syntax node represents a node in the AST , and is a base class of all expressions.
-struct SyntaxNode
+class SyntaxNode
 {
+public:
     SyntaxNode(Token tok, SyntaxTag tag) : tok_(tok), tag_(tag)
     {
     }
@@ -53,8 +54,9 @@ std::ostream &operator<<(std::ostream &out, const SyntaxNode &node)
     return out;
 }
 
-struct Expression : SyntaxNode
+class Expression : public SyntaxNode
 {
+public:
     Expression(Token tok) : SyntaxNode(tok, SyntaxTag::expression)
     {
     }
@@ -65,8 +67,9 @@ struct Expression : SyntaxNode
     };
 };
 
-struct BinaryExpression : SyntaxNode
+class BinaryExpression : public SyntaxNode
 {
+public:
     // Must use some kind of ptr, because of inheritance
     // (children may be any class that inherits from SyntaxNode)
     using ptr_type = std::shared_ptr<SyntaxNode>;
@@ -85,8 +88,9 @@ struct BinaryExpression : SyntaxNode
     ptr_type right_;
 };
 
-struct ParenthesizedExpression : SyntaxNode
+class ParenthesizedExpression : public SyntaxNode
 {
+public:
     using ptr_type = std::shared_ptr<SyntaxNode>;
 
     ParenthesizedExpression(Token paren_open, ptr_type expr, Token paren_close)
@@ -122,7 +126,12 @@ private:
 
     Token &next()
     {
-        return tokens_[p_++];
+        Token &curr = tokens_[p_];
+        if (p_ < tokens_.size() - 1)
+        {
+            p_++;
+        }
+        return curr;
     }
 
     // TOFIX: return reference
@@ -140,86 +149,54 @@ private:
         return Token(TokenTag::bad, current().line_count_, current().char_count_);
     }
 
-    std::shared_ptr<SyntaxNode> do_parse(int order = 0)
+    std::shared_ptr<SyntaxNode> parse_primary_expression(int order = 0)
     {
-        if (order == 0)
+        TokenTag curr_tag = current().tag_;
+        if (curr_tag != TokenTag::val_double && curr_tag != TokenTag::val_int)
         {
-            // Parse weaker binary operators (+, -)
-            auto left = do_parse(order + 1);
-            while (current().tag_ == TokenTag::plus || current().tag_ == TokenTag::minus)
-            {
-                Token &op = current();
-                next();
-                auto right = do_parse(order + 1);
-                left = std::make_unique<BinaryExpression>(left, op, right);
-            }
-            return left;
+            std::stringstream err;
+            err << "Error: Unexpected token (" << current() << ") at (" << current().line_count_ << ", "
+                << current().char_count_ << "), expected <" << TokenTag::val_double << "> or <" << TokenTag::val_int << "> type";
+            diagnostics_.push_back(err.str());
         }
-        else if (order == 1)
-        {
-            // Parse strong binary operators (*, /)
-            auto left = do_parse(order + 1);
-            while (current().tag_ == TokenTag::star || current().tag_ == TokenTag::slash)
-            {
-                Token &op = current();
-                next();
-                auto right = do_parse(order + 1);
-                ;
+        Token tok = match(curr_tag);
+        return std::make_shared<Expression>(tok);
+    }
 
-                left = std::make_unique<BinaryExpression>(left, op, right);
-            }
-            return left;
-        }
-
-        else if (order == 2)
+    std::shared_ptr<SyntaxNode> parse_expression(int order = 0)
+    {
+        auto left = parse_primary_expression();
+        while (true)
         {
-            // Parse parenthesis
-            if (current().tag_ == TokenTag::parenthesis_open)
-            {
-                Token open = match(TokenTag::parenthesis_open);
-                auto expr = do_parse(0);
-                Token close = match(TokenTag::parenthesis_close);
-                return std::make_shared<ParenthesizedExpression>(open, expr, close);
-            }
-            // Parse primary expressions (values)
-            TokenTag curr_tag = current().tag_;
-            if (curr_tag != TokenTag::val_double && curr_tag != TokenTag::val_int)
-            {
-                std::cout << "Parser: Unexpected token" << std::endl;
-                throw "Parser: Unexpected token";
-            }
-            Token tok = match(curr_tag);
-            return std::make_shared<Expression>(tok);
+            int precedence = get_binary_operator_precedence(current());
+            if (precedence == 0 || precedence <= order)
+                break;
+            // Current token is a binary operator
+            Token &op = current();
+            next();
+            auto right = parse_expression(precedence);
+            left = std::make_unique<BinaryExpression>(left, op, right);
         }
-        else
-        {
-            std::cout << "Parser error: invalid operator order value" << std::endl;
-            throw "Parser error: invalid operator order value";
-        }
+        return left;
     }
 
 public:
     std::shared_ptr<SyntaxNode> parse(std::vector<Token> &&tokens)
     {
+        // Reset state
         tokens_ = std::move(tokens);
         p_ = 0;
+        diagnostics_.clear();
 
-        auto ast = do_parse();
+        auto ast = parse_expression();
+
         match(TokenTag::eof);
         return ast;
     }
 
-    void print_diagnostics(std::ostream &out)
+    std::vector<std::string> &get_diagnostics()
     {
-        if (!diagnostics_.empty())
-        {
-            out << "Parser diagnostics:" << std::endl;
-            for (auto &msg : diagnostics_)
-            {
-                out << msg << std::endl;
-            }
-            diagnostics_.clear();
-        }
+        return diagnostics_;
     }
 
 private:

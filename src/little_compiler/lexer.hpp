@@ -44,8 +44,9 @@ std::ostream &operator<<(std::ostream &os, TokenTag tag)
     return os;
 }
 
-struct Token
+class Token
 {
+public:
     Token() : tag_(TokenTag::bad) {}
 
     Token(TokenTag tag, unsigned int line_count, unsigned int char_count)
@@ -82,6 +83,23 @@ std::ostream &operator<<(std::ostream &out, const Token &tok)
     return out;
 }
 
+// if tok represents binary operation, returns its precedence
+// else, returns 0
+int get_binary_operator_precedence(Token tok)
+{
+    switch (tok.tag_)
+    {
+    case TokenTag::star:
+    case TokenTag::slash:
+        return 2;
+    case TokenTag::plus:
+    case TokenTag::minus:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 // Takes raw text as input and extracts token one at a time, from left to right.
 class Lexer
 {
@@ -105,7 +123,6 @@ private:
         return input_str_[p_ + 1];
     }
 
-public:
     Token next_token()
     {
 
@@ -153,7 +170,6 @@ public:
                     std::stringstream err;
                     err << "Error: invalid syntax: expected \"/*\" to close with \"*/\") at (" << line_ << ", " << p_ << ")";
                     diagnostics_.push_back(err.str());
-                    std::cout << err.str() << std::endl;
                 }
                 else
                 {
@@ -250,11 +266,14 @@ public:
         }
     }
 
+public:
     std::vector<Token> tokenize_line(std::string &&next_line)
     {
+        // Reset state
         input_str_ = std::move(next_line);
         peek_ = input_str_[0];
         p_ = 0;
+        diagnostics_.clear();
 
         std::vector<Token> tokens;
 
@@ -273,17 +292,9 @@ public:
         return std::move(tokens);
     }
 
-    void print_diagnostics(std::ostream &out)
+    std::vector<std::string> &get_diagnostics()
     {
-        if (!diagnostics_.empty())
-        {
-            out << "Lexer diagnostics:" << std::endl;
-            for (auto &msg : diagnostics_)
-            {
-                out << msg << std::endl;
-            }
-            diagnostics_.clear();
-        }
+        return diagnostics_;
     }
 
 private:

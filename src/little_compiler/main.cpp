@@ -33,12 +33,20 @@ int main(int argc, char *argv[])
         // Tokenize line
         std::vector<Token> tokens = lexer.tokenize_line(std::move(line));
 
-        // Print diagnostics, if any.
-        lexer.print_diagnostics(std::cout);
+        // Print diagnostics, if any
+        if (!lexer.get_diagnostics().empty())
+        {
+            std::cout << "Lexer error:" << std::endl;
+            for (auto &msg : lexer.get_diagnostics())
+            {
+                std::cout << msg << std::endl;
+            }
+            continue;
+        }
 
         if (tokens.size() == 1 && tokens[0].tag_ == TokenTag::eof)
         {
-            // Empty line
+            // If empty line, continue to next line
             continue;
         }
 
@@ -49,7 +57,15 @@ int main(int argc, char *argv[])
         std::cout << *root << std::endl;
 
         // Print diagnostics, if any.
-        parser.print_diagnostics(std::cout);
+        if (!parser.get_diagnostics().empty())
+        {
+            std::cout << "Parser error:" << std::endl;
+            for (auto &msg : parser.get_diagnostics())
+            {
+                std::cout << msg << std::endl;
+            }
+            continue;
+        }
 
         // Evaluate
         auto result = evaluator.evaluate_expression(root);
