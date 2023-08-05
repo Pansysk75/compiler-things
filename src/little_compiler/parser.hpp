@@ -119,10 +119,47 @@ private:
         return Token(TokenTag::bad, current().line_count_, current().char_count_);
     }
 
-    std::shared_ptr<SyntaxNode> parse_primary_expression()
+    std::shared_ptr<SyntaxNode> do_parse(int order = 0)
     {
-        Token tok = match(TokenTag::val);
-        return std::make_shared<Expression>(tok);
+        if (order == 0)
+        {
+            // Parse weaker binary operators (+, -)
+            auto left = do_parse(order + 1);
+            while (current().tag_ == TokenTag::binary_op && current().val_ == "+" || current().val_ == "-")
+            {
+                Token &op = current();
+                next();
+                auto right = do_parse(order + 1);
+                left = std::make_unique<BinaryExpression>(left, op, right);
+            }
+            return left;
+        }
+        else if (order == 1)
+        {
+            // Parse strong binary operators (*, /)
+            auto left = do_parse(order + 1);
+            while (current().tag_ == TokenTag::binary_op && current().val_ == "*" || current().val_ == "/")
+            {
+                Token &op = current();
+                next();
+                auto right = do_parse(order + 1);
+                ;
+
+                left = std::make_unique<BinaryExpression>(left, op, right);
+            }
+            return left;
+        }
+        else if (order == 2)
+        {
+            // Parse primary expressions (values)
+            Token tok = match(TokenTag::val);
+            return std::make_shared<Expression>(tok);
+        }
+        else
+        {
+            std::cout << "Parser error: invalid operator order value" << std::endl;
+            throw "Parser error: invalid operator order value";
+        }
     }
 
 public:
@@ -131,18 +168,9 @@ public:
         tokens_ = std::move(tokens);
         p_ = 0;
 
-        auto left = parse_primary_expression();
-        while (current().tag_ == TokenTag::binary_op)
-        {
-
-            Token &op = current();
-            next();
-            auto right = parse_primary_expression();
-
-            left = std::make_unique<BinaryExpression>(std::move(left), op, std::move(right));
-        }
+        auto ast = do_parse();
         match(TokenTag::eof);
-        return left;
+        return ast;
     }
 
     void print_diagnostics(std::ostream &out)
