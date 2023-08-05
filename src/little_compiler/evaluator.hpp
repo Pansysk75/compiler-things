@@ -18,22 +18,31 @@ public:
             auto right = evaluate_expression(r->right_);
 
             auto &op = r->tok_;
-            if (op.val_ == "+")
+            if (op.tag_ == TokenTag::plus)
             {
                 return left + right;
             }
-            if (op.val_ == "-")
+            if (op.tag_ == TokenTag::minus)
             {
                 return left - right;
             }
-            if (op.val_ == "*")
+            if (op.tag_ == TokenTag::star)
             {
                 return left * right;
             }
-            if (op.val_ == "/")
+            if (op.tag_ == TokenTag::slash)
             {
                 return left / right; // YOLO
             }
         }
+        else if (root->tag_ == SyntaxTag::parenthesized_expression)
+        {
+            auto r = std::static_pointer_cast<ParenthesizedExpression>(root);
+            return evaluate_expression(r->expr_);
+        }
+
+        // unreachable
+        std::cout << "Evaluator error: invalid syntax node tag " << root->tok_ << std::endl;
+        throw "Evaluator error: invalid syntax node tag";
     }
 };

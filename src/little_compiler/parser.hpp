@@ -10,7 +10,8 @@
 enum class SyntaxTag
 {
     expression,
-    binary_expression
+    binary_expression,
+    parenthesized_expression
 };
 
 struct SyntaxNode;
@@ -84,6 +85,26 @@ struct BinaryExpression : SyntaxNode
     ptr_type right_;
 };
 
+struct ParenthesizedExpression : SyntaxNode
+{
+    using ptr_type = std::shared_ptr<SyntaxNode>;
+
+    ParenthesizedExpression(Token paren_open, ptr_type expr, Token paren_close)
+        // TOFIX: A base class with a token member doesn't make sense here
+        : SyntaxNode(paren_open, SyntaxTag::parenthesized_expression), paren_open_(paren_open),
+          expr_(expr), paren_close_(paren_close)
+    {
+    }
+
+    std::vector<std::shared_ptr<SyntaxNode>> get_children() const
+    {
+        return {expr_};
+    };
+    Token paren_open_;
+    ptr_type expr_;
+    Token paren_close_;
+};
+
 class Parser
 {
 
@@ -125,7 +146,7 @@ private:
         {
             // Parse weaker binary operators (+, -)
             auto left = do_parse(order + 1);
-            while (current().tag_ == TokenTag::binary_op && current().val_ == "+" || current().val_ == "-")
+            while (current().tag_ == TokenTag::plus || current().tag_ == TokenTag::minus)
             {
                 Token &op = current();
                 next();
@@ -138,7 +159,7 @@ private:
         {
             // Parse strong binary operators (*, /)
             auto left = do_parse(order + 1);
-            while (current().tag_ == TokenTag::binary_op && current().val_ == "*" || current().val_ == "/")
+            while (current().tag_ == TokenTag::star || current().tag_ == TokenTag::slash)
             {
                 Token &op = current();
                 next();
@@ -149,10 +170,25 @@ private:
             }
             return left;
         }
+
         else if (order == 2)
         {
+            // Parse parenthesis
+            if (current().tag_ == TokenTag::parenthesis_open)
+            {
+                Token open = match(TokenTag::parenthesis_open);
+                auto expr = do_parse(0);
+                Token close = match(TokenTag::parenthesis_close);
+                return std::make_shared<ParenthesizedExpression>(open, expr, close);
+            }
             // Parse primary expressions (values)
-            Token tok = match(TokenTag::val);
+            TokenTag curr_tag = current().tag_;
+            if (curr_tag != TokenTag::val_double && curr_tag != TokenTag::val_int)
+            {
+                std::cout << "Parser: Unexpected token" << std::endl;
+                throw "Parser: Unexpected token";
+            }
+            Token tok = match(curr_tag);
             return std::make_shared<Expression>(tok);
         }
         else

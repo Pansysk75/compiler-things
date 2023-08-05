@@ -8,8 +8,14 @@
 enum class TokenTag
 {
     id,
-    binary_op,
-    val,
+    plus,
+    minus,
+    star,
+    slash,
+    parenthesis_open,
+    parenthesis_close,
+    val_int,
+    val_double,
     eof,
     bad
 };
@@ -17,18 +23,23 @@ enum class TokenTag
 // Print support for TokenTag
 std::ostream &operator<<(std::ostream &os, TokenTag tag)
 {
+#define TOKEN_TAG_CASE(tag) \
+    case TokenTag::tag:     \
+        return os << #tag;
+
     switch (tag)
     {
-    case TokenTag::id:
-        return os << "id";
-    case TokenTag::binary_op:
-        return os << "binary_op";
-    case TokenTag::val:
-        return os << "val";
-    case TokenTag::eof:
-        return os << "eof";
-    case TokenTag::bad:
-        return os << "bad";
+        TOKEN_TAG_CASE(id)
+        TOKEN_TAG_CASE(plus)
+        TOKEN_TAG_CASE(minus)
+        TOKEN_TAG_CASE(star)
+        TOKEN_TAG_CASE(slash)
+        TOKEN_TAG_CASE(parenthesis_open)
+        TOKEN_TAG_CASE(parenthesis_close)
+        TOKEN_TAG_CASE(val_int)
+        TOKEN_TAG_CASE(val_double)
+        TOKEN_TAG_CASE(eof)
+        TOKEN_TAG_CASE(bad)
     };
     return os;
 }
@@ -99,7 +110,7 @@ public:
     {
 
         // Step 1: Ignore spaces/tabs/newlines, exit if end of str
-        for (;; peek_ = next_input_char())
+        for (peek_ = input_str_[p_];; peek_ = next_input_char())
         {
             if (peek_ == ' ' || peek_ == '\t')
             {
@@ -140,10 +151,14 @@ public:
                 if (peek_ != '/')
                 {
                     std::stringstream err;
-                    err << "Error: invalid syntax: expected \"*/\" after \"/*\") at (" << line_ << ", " << p_ << ")";
+                    err << "Error: invalid syntax: expected \"/*\" to close with \"*/\") at (" << line_ << ", " << p_ << ")";
                     diagnostics_.push_back(err.str());
+                    std::cout << err.str() << std::endl;
                 }
-                peek_ = next_input_char();
+                else
+                {
+                    peek_ = next_input_char();
+                }
             }
         }
 
@@ -163,7 +178,7 @@ public:
                 buf.push_back(peek_);
                 peek_ = next_input_char();
             } while (std::isdigit(peek_));
-            return Token(TokenTag::val, buf, line_, p_);
+            return Token(TokenTag::val_double, buf, line_, p_);
         }
         // Integers or floats
         if (std::isdigit(peek_))
@@ -181,8 +196,8 @@ public:
                     peek_ = next_input_char();
                 }
             } while (std::isdigit(peek_));
-
-            return Token(TokenTag::val, buf, line_, p_);
+            TokenTag tag = is_float ? TokenTag::val_double : TokenTag::val_int;
+            return Token(tag, buf, line_, p_);
         }
         // Identifiers
         if (std::isalpha(peek_))
@@ -196,11 +211,30 @@ public:
 
             return Token(TokenTag::id, buf, line_, p_);
         }
-        if (peek_ == '+' || peek_ == '-' || peek_ == '*' || peek_ == '/' || peek_ == '=')
+        // Binary operators
+        if (peek_ == '+')
         {
-            Token tok = Token(TokenTag::binary_op, peek_, line_, p_);
-            peek_ = next_input_char();
-            return tok;
+            return Token(TokenTag::plus, peek_, line_, p_++);
+        }
+        if (peek_ == '-')
+        {
+            return Token(TokenTag::minus, peek_, line_, p_++);
+        }
+        if (peek_ == '*')
+        {
+            return Token(TokenTag::star, peek_, line_, p_++);
+        }
+        if (peek_ == '/')
+        {
+            return Token(TokenTag::slash, peek_, line_, p_++);
+        }
+        if (peek_ == '(')
+        {
+            return Token(TokenTag::parenthesis_open, peek_, line_, p_++);
+        }
+        if (peek_ == ')')
+        {
+            return Token(TokenTag::parenthesis_close, peek_, line_, p_++);
         }
         // Treat any unknown character as a bad token
         else
