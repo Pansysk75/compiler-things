@@ -112,21 +112,21 @@ private:
             return next();
         }
         std::stringstream err;
-        err << "Error: unexpected token (" << current() << ") at (" << current().line_count_ << ", "
+        err << "Error: Unexpected token (" << current() << ") at (" << current().line_count_ << ", "
             << current().char_count_ << "), expected <" << tag << "> type";
-        diagnostics_.emplace_back(err.str());
+        diagnostics_.push_back(err.str());
         // return bad token if no match
         return Token(TokenTag::bad, current().line_count_, current().char_count_);
     }
 
-    std::unique_ptr<SyntaxNode> parse_primary_expression()
+    std::shared_ptr<SyntaxNode> parse_primary_expression()
     {
         Token tok = match(TokenTag::val);
-        return std::make_unique<Expression>(tok);
+        return std::make_shared<Expression>(tok);
     }
 
 public:
-    std::unique_ptr<SyntaxNode> parse(std::vector<Token> &&tokens)
+    std::shared_ptr<SyntaxNode> parse(std::vector<Token> &&tokens)
     {
         tokens_ = std::move(tokens);
         p_ = 0;
@@ -141,6 +141,7 @@ public:
 
             left = std::make_unique<BinaryExpression>(std::move(left), op, std::move(right));
         }
+        match(TokenTag::eof);
         return left;
     }
 

@@ -48,7 +48,7 @@ struct Token
 
     void print(std::ostream &out) const
     {
-        if (tag_ == TokenTag::bad || tag_ == TokenTag::eof)
+        if (tag_ == TokenTag::eof)
         {
             out << "<" << tag_ << ">";
         }
@@ -83,7 +83,9 @@ private:
     {
         if (peek_ == '\0')
         {
-            throw "invalid syntax: unexpected end of text";
+            std::stringstream err;
+            err << "Error: invalid syntax: expected end of text at (" << line_ << ", " << p_ << ")";
+            diagnostics_.push_back(err.str());
         }
         return input_str_[++p_];
     }
@@ -137,7 +139,9 @@ public:
                 peek_ = next_input_char();
                 if (peek_ != '/')
                 {
-                    throw "invalid syntax: expected \"*/\" after \"/*\"";
+                    std::stringstream err;
+                    err << "Error: invalid syntax: expected \"*/\" after \"/*\") at (" << line_ << ", " << p_ << ")";
+                    diagnostics_.push_back(err.str());
                 }
                 peek_ = next_input_char();
             }
@@ -202,6 +206,11 @@ public:
         else
         {
             std::string val(1, peek_);
+
+            std::stringstream err;
+            err << "Error: Invalid token (" << val << ") at (" << line_ << ", " << p_ << ")";
+            diagnostics_.push_back(err.str());
+
             peek_ = next_input_char();
             return Token(TokenTag::bad, val, line_, p_);
         }
@@ -215,20 +224,14 @@ public:
 
         std::vector<Token> tokens;
 
-        try
+        Token tok;
+        do
         {
-            Token tok;
-            do
-            {
-                tok = this->next_token();
-                tokens.push_back(tok);
-                std::cout << tok << ' ';
-            } while (tok.tag_ != TokenTag::bad && tok.tag_ != TokenTag::eof);
-        }
-        catch (const char *err)
-        {
-            std::cout << "Exception: " << err << std::endl;
-        }
+            tok = this->next_token();
+            tokens.push_back(tok);
+            std::cout << tok << ' ';
+        } while (tok.tag_ != TokenTag::bad && tok.tag_ != TokenTag::eof);
+
         std::cout << std::endl;
 
         line_++;
@@ -236,9 +239,23 @@ public:
         return std::move(tokens);
     }
 
+    void print_diagnostics(std::ostream &out)
+    {
+        if (!diagnostics_.empty())
+        {
+            out << "Lexer diagnostics:" << std::endl;
+            for (auto &msg : diagnostics_)
+            {
+                out << msg << std::endl;
+            }
+            diagnostics_.clear();
+        }
+    }
+
 private:
     char peek_;
     std::string input_str_;
     unsigned int p_; // Pointer to current element in input_str_
     unsigned int line_;
+    std::vector<std::string> diagnostics_;
 };

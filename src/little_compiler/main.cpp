@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "evaluator.hpp"
 
 #include <vector>
 #include <string>
@@ -22,14 +23,24 @@ int main(int argc, char *argv[])
     std::string line;
     Lexer lexer;
     Parser parser;
+    Evaluator evaluator;
 
     while (std::getline(file, line))
     {
-        std::cout << line << '\n'
-                  << std::endl;
+        std::cout << "\nParsing next line: \n"
+                  << line << std::endl;
 
         // Tokenize line
         std::vector<Token> tokens = lexer.tokenize_line(std::move(line));
+
+        // Print diagnostics, if any.
+        lexer.print_diagnostics(std::cout);
+
+        if (tokens.size() == 1 && tokens[0].tag_ == TokenTag::eof)
+        {
+            // Empty line
+            continue;
+        }
 
         // Parse tokens
         auto root = parser.parse(std::move(tokens));
@@ -37,8 +48,12 @@ int main(int argc, char *argv[])
         // Print result
         std::cout << *root << std::endl;
 
-        // Print diagnostics
+        // Print diagnostics, if any.
         parser.print_diagnostics(std::cout);
+
+        // Evaluate
+        auto result = evaluator.evaluate_expression(root);
+        std::cout << "Evaluated: " << result << std::endl;
     }
 
     return 0;
