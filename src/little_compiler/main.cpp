@@ -33,6 +33,13 @@ int main(int argc, char *argv[])
         // Tokenize line
         std::vector<Token> tokens = lexer.tokenize_line(std::move(line));
 
+        // Print tokens
+        for (auto &tok : tokens)
+        {
+            std::cout << tok;
+        }
+        std::cout << std::endl;
+
         // Print diagnostics, if any
         if (!lexer.get_diagnostics().empty())
         {
