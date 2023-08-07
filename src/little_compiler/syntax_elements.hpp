@@ -8,7 +8,12 @@
 // Describes the type of node in the AST
 enum class SyntaxTag
 {
-    expression,
+    // identifier_expression,
+    boolean_expression,
+
+    integer_expression,
+    floating_expression,
+
     unary_expression,
     binary_expression,
     parenthesized_expression
@@ -26,7 +31,10 @@ public:
     }
 
     // TOFIX: return something more efficient
-    virtual std::vector<std::shared_ptr<SyntaxNode>> get_children() const = 0;
+    virtual std::vector<std::shared_ptr<SyntaxNode>> get_children() const
+    {
+        return {};
+    };
 
     Token tok_;
     SyntaxTag tag_;
@@ -54,27 +62,34 @@ std::ostream &operator<<(std::ostream &out, const SyntaxNode &node)
     return out;
 }
 
-class Expression : public SyntaxNode
+struct IntegerExpression : public SyntaxNode
 {
-public:
-    Expression(Token tok) : SyntaxNode(tok, SyntaxTag::expression)
+    IntegerExpression(Token tok) : SyntaxNode(tok, SyntaxTag::integer_expression)
     {
     }
-
-    std::vector<std::shared_ptr<SyntaxNode>> get_children() const
-    {
-        return {};
-    };
 };
 
-class BinaryExpression : public SyntaxNode
+struct FloatingExpression : public SyntaxNode
 {
-public:
+    FloatingExpression(Token tok) : SyntaxNode(tok, SyntaxTag::floating_expression)
+    {
+    }
+};
+
+struct BooleanExpression : public SyntaxNode
+{
+    BooleanExpression(Token tok) : SyntaxNode(tok, SyntaxTag::boolean_expression)
+    {
+    }
+};
+
+struct BinaryExpression : public SyntaxNode
+{
     // Must use some kind of ptr, because of inheritance
     // (children may be any class that inherits from SyntaxNode)
     using ptr_type = std::shared_ptr<SyntaxNode>;
 
-    BinaryExpression(ptr_type left, Token &op, ptr_type right)
+    BinaryExpression(ptr_type left, Token op, ptr_type right)
         : SyntaxNode(op, SyntaxTag::binary_expression), left_(left), right_(right)
     {
     }
@@ -88,14 +103,13 @@ public:
     ptr_type right_;
 };
 
-class UnaryExpression : public SyntaxNode
+struct UnaryExpression : public SyntaxNode
 {
-public:
     // Must use some kind of ptr, because of inheritance
     // (children may be any class that inherits from SyntaxNode)
     using ptr_type = std::shared_ptr<SyntaxNode>;
 
-    UnaryExpression(Token &op, ptr_type expr)
+    UnaryExpression(Token op, ptr_type expr)
         : SyntaxNode(op, SyntaxTag::unary_expression), expr_(expr)
     {
     }
@@ -108,9 +122,8 @@ public:
     ptr_type expr_;
 };
 
-class ParenthesizedExpression : public SyntaxNode
+struct ParenthesizedExpression : public SyntaxNode
 {
-public:
     using ptr_type = std::shared_ptr<SyntaxNode>;
 
     ParenthesizedExpression(Token paren_open, ptr_type expr, Token paren_close)

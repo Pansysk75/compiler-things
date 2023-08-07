@@ -40,6 +40,8 @@ std::ostream &operator<<(std::ostream &os, TokenTag tag)
         TOKEN_TAG_CASE(eof)
         TOKEN_TAG_CASE(bad)
     };
+#undef TOKEN_TAG_CASE
+
     return os;
 }
 

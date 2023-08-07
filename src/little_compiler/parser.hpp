@@ -31,6 +31,20 @@ private:
         return curr;
     }
 
+    Token match(const std::vector<TokenTag> &tags)
+    {
+        if (std::find(tags.begin(), tags.end(), current().tag_) != tags.end())
+        {
+            return next();
+        }
+        std::stringstream err;
+        err << "Error: Unexpected token (" << current() << ") at (" << current().line_count_ << ", "
+            << current().char_count_ << "), expected primary type";
+        diagnostics_.push_back(err.str());
+        // return bad token if no match
+        return Token(TokenTag::bad, current().line_count_, current().char_count_);
+    }
+
     // TOFIX: return reference
     Token match(TokenTag tag)
     {
@@ -48,16 +62,32 @@ private:
 
     std::shared_ptr<SyntaxNode> parse_primary_expression(int order = 0)
     {
-        TokenTag curr_tag = current().tag_;
-        if (curr_tag != TokenTag::val_double && curr_tag != TokenTag::val_int)
+
+        if (current().tag_ == TokenTag::parenthesis_open)
         {
-            std::stringstream err;
-            err << "Error: Unexpected token (" << current() << ") at (" << current().line_count_ << ", "
-                << current().char_count_ << "), expected <" << TokenTag::val_double << "> or <" << TokenTag::val_int << "> type";
-            diagnostics_.push_back(err.str());
+            Token open = match(TokenTag::parenthesis_open);
+            auto expr = parse_expression(0);
+            Token close = match(TokenTag::parenthesis_close);
+            return std::make_shared<ParenthesizedExpression>(open, expr, close);
         }
-        Token tok = match(curr_tag);
-        return std::make_shared<Expression>(tok);
+
+        const std::vector<TokenTag> primary_expr_token_tags = {TokenTag::val_double, TokenTag::val_int, TokenTag::id};
+        Token tok = match(primary_expr_token_tags);
+
+        if (tok.tag_ == TokenTag::val_double)
+            return std::make_shared<FloatingExpression>(tok);
+        else if (tok.tag_ == TokenTag::val_int)
+            return std::make_shared<IntegerExpression>(tok);
+        else if (tok.tag_ == TokenTag::id && (tok.val_ == "true" || tok.val_ == "false"))
+        {
+            return std::make_shared<BooleanExpression>(tok);
+        }
+        else if (tok.tag_ == TokenTag::bad)
+        {
+            return std::make_shared<IntegerExpression>(tok); // Unkown tokens are filled in as ints
+        }
+        std::cout << "Unreachable" << std::endl;
+        throw "Unreachable";
     }
 
     std::shared_ptr<SyntaxNode> parse_expression(int order = 0)
@@ -69,7 +99,7 @@ private:
         if (precedence != 0 && precedence >= order)
         {
             // Current token is a unary operator
-            Token &op = next();
+            Token op = next();
             auto expr = parse_expression(precedence);
             left = std::make_shared<UnaryExpression>(op, expr);
         }
@@ -85,7 +115,7 @@ private:
             if (precedence == 0 || precedence <= order)
                 break;
             // Current token is a binary operator
-            Token &op = current();
+            Token op = current();
             next();
             auto right = parse_expression(precedence);
             left = std::make_unique<BinaryExpression>(left, op, right);
@@ -101,10 +131,10 @@ public:
         p_ = 0;
         diagnostics_.clear();
 
-        auto ast = parse_expression();
+        auto parse_tree = parse_expression();
 
         match(TokenTag::eof);
-        return ast;
+        return parse_tree;
     }
 
     std::vector<std::string> &get_diagnostics()

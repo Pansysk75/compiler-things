@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "binder.hpp"
 #include "evaluator.hpp"
 
 #include <vector>
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
     std::string line;
     Lexer lexer;
     Parser parser;
+    Binder binder;
     Evaluator evaluator;
 
     while (std::getline(file, line))
@@ -58,10 +60,10 @@ int main(int argc, char *argv[])
         }
 
         // Parse tokens
-        auto root = parser.parse(std::move(tokens));
+        auto parse_tree = parser.parse(std::move(tokens));
 
         // Print result
-        std::cout << *root << std::endl;
+        std::cout << *parse_tree << std::endl;
 
         // Print diagnostics, if any.
         if (!parser.get_diagnostics().empty())
@@ -74,8 +76,25 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        // Bind parse tree
+        auto ast = binder.bind(parse_tree);
+
+        // // Print ast
+        // std::cout << *ast << std::endl;
+
+        // Print diagnostics, if any.
+        if (!binder.get_diagnostics().empty())
+        {
+            std::cout << "Parser error:" << std::endl;
+            for (auto &msg : binder.get_diagnostics())
+            {
+                std::cout << msg << std::endl;
+            }
+            continue;
+        }
+
         // Evaluate
-        auto result = evaluator.evaluate_expression(root);
+        auto result = evaluator.evaluate_expression(ast);
         std::cout << "Evaluated: " << result << std::endl;
     }
 

@@ -2,8 +2,8 @@
 
 #include "token.hpp"
 
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 
 // Takes raw text as input and extracts token one at a time, from left to right.

@@ -1,36 +1,41 @@
 #pragma once
 #include "parser.hpp"
+#include "binder.hpp"
 
 class Evaluator
 {
 public:
-    double evaluate_expression(std::shared_ptr<SyntaxNode> root)
+    double evaluate_expression(std::shared_ptr<BoundNode> root)
     {
-        if (root->tag_ == SyntaxTag::expression)
+        if (root->tag_ == BoundExpressionTag::integer)
         {
-            auto r = std::static_pointer_cast<Expression>(root);
-            return std::stod(r->tok_.val_);
+            auto r = std::static_pointer_cast<BoundIntegerExpression>(root);
+            return std::stoi(r->value_);
         }
-        else if (root->tag_ == SyntaxTag::binary_expression)
+        else if (root->tag_ == BoundExpressionTag::floating)
         {
-            auto r = std::static_pointer_cast<BinaryExpression>(root);
+            auto r = std::static_pointer_cast<BoundFloatingExpression>(root);
+            return std::stod(r->value_);
+        }
+        else if (root->tag_ == BoundExpressionTag::binary)
+        {
+            auto r = std::static_pointer_cast<BoundBinaryExpression>(root);
             auto left = evaluate_expression(r->left_);
             auto right = evaluate_expression(r->right_);
 
-            auto &op = r->tok_;
-            if (op.tag_ == TokenTag::plus)
+            if (r->tag_ == BoundBinaryOperatorTag::addition)
             {
                 return left + right;
             }
-            else if (op.tag_ == TokenTag::minus)
+            else if (r->tag_ == BoundBinaryOperatorTag::subtraction)
             {
                 return left - right;
             }
-            else if (op.tag_ == TokenTag::star)
+            else if (r->tag_ == BoundBinaryOperatorTag::multiplication)
             {
                 return left * right;
             }
-            else if (op.tag_ == TokenTag::slash)
+            else if (r->tag_ == BoundBinaryOperatorTag::division)
             {
                 return left / right; // YOLO
             }
@@ -38,38 +43,32 @@ public:
             {
                 // unreachable
                 std::stringstream ss;
-                std::cout << "Evaluator error: invalid binary op token tag " << op.tag_ << std::endl;
-                throw "Evaluator error: invalid binary op token tag node tag";
+                std::cout << "Evaluator error: invalid binary op tag" << std::endl;
+                throw "Evaluator error: invalid binary op tag";
             }
         }
-        else if (root->tag_ == SyntaxTag::parenthesized_expression)
+        else if (root->tag_ == BoundExpressionTag::unary)
         {
-            auto r = std::static_pointer_cast<ParenthesizedExpression>(root);
-            return evaluate_expression(r->expr_);
-        }
-        else if (root->tag_ == SyntaxTag::unary_expression)
-        {
-            auto r = std::static_pointer_cast<UnaryExpression>(root);
-            auto &op = r->tok_;
-            if (op.tag_ == TokenTag::minus)
+            auto r = std::static_pointer_cast<BoundUnaryExpression>(root);
+            if (r->tag_ == BoundUnaryOperatorTag::negation)
             {
                 return -evaluate_expression(r->expr_);
             }
-            else if (op.tag_ == TokenTag::plus)
+            else if (r->tag_ == BoundUnaryOperatorTag::identity)
             {
                 return +evaluate_expression(r->expr_);
             }
             else
             {
                 // unreachable
-                std::cout << "Evaluator error: invalid unary op token tag " << op.tag_ << std::endl;
-                throw "Evaluator error: invalid unary op token tag node tag";
+                std::cout << "Evaluator error: invalid unary op tag " << (int)r->tag_ << std::endl;
+                throw "Evaluator error: invalid unary op token tag";
             }
         }
         else
         {
             // unreachable
-            std::cout << "Evaluator error: invalid syntax node tag " << root->tok_ << std::endl;
+            std::cout << "Evaluator error: invalid syntax node tag " << std::endl;
             throw "Evaluator error: invalid syntax node tag";
         }
     }
