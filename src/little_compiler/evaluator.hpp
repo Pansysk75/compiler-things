@@ -17,53 +17,63 @@ public:
             auto r = std::static_pointer_cast<BoundFloatingExpression>(root);
             return std::stod(r->value_);
         }
+        else if (root->tag_ == BoundExpressionTag::boolean)
+        {
+            auto r = std::static_pointer_cast<BoundBooleanExpression>(root);
+            return r->value_ == "true";
+        }
         else if (root->tag_ == BoundExpressionTag::binary)
         {
             auto r = std::static_pointer_cast<BoundBinaryExpression>(root);
             auto left = evaluate_expression(r->left_);
             auto right = evaluate_expression(r->right_);
 
-            if (r->tag_ == BoundBinaryOperatorTag::addition)
+            switch (r->tag_)
             {
+            case BoundBinaryOperatorTag::addition:
                 return left + right;
-            }
-            else if (r->tag_ == BoundBinaryOperatorTag::subtraction)
-            {
+            case BoundBinaryOperatorTag::subtraction:
                 return left - right;
-            }
-            else if (r->tag_ == BoundBinaryOperatorTag::multiplication)
-            {
+            case BoundBinaryOperatorTag::multiplication:
                 return left * right;
-            }
-            else if (r->tag_ == BoundBinaryOperatorTag::division)
-            {
+            case BoundBinaryOperatorTag::division:
                 return left / right; // YOLO
+            case BoundBinaryOperatorTag::equal:
+                return left == right ? 1 : 0;
+            case BoundBinaryOperatorTag::not_equal:
+                return left != right ? 1 : 0;
+            case BoundBinaryOperatorTag::greater_than:
+                return left > right ? 1 : 0;
+            case BoundBinaryOperatorTag::less_than:
+                return left < right ? 1 : 0;
+            case BoundBinaryOperatorTag::and:
+                return ((bool)left && (bool)right) ? 1 : 0;
+            case BoundBinaryOperatorTag:: or:
+                return ((bool)left || (bool)right) ? 1 : 0;
             }
-            else
-            {
-                // unreachable
-                std::stringstream ss;
-                std::cout << "Evaluator error: invalid binary op tag" << std::endl;
-                throw "Evaluator error: invalid binary op tag";
-            }
+
+            // unreachable
+            std::stringstream ss;
+            std::cout << "Evaluator error: invalid binary op tag" << std::endl;
+            throw "Evaluator error: invalid binary op tag";
         }
         else if (root->tag_ == BoundExpressionTag::unary)
         {
             auto r = std::static_pointer_cast<BoundUnaryExpression>(root);
-            if (r->tag_ == BoundUnaryOperatorTag::negation)
+            switch (r->tag_)
             {
-                return -evaluate_expression(r->expr_);
+            case BoundUnaryOperatorTag::negation:
+                if (r->type_ == Type::boolean)
+                    return evaluate_expression(r->expr_) > 0 ? 0 : 1;
+                else
+                    return -evaluate_expression(r->expr_);
+
+            case BoundUnaryOperatorTag::identity:
+                return evaluate_expression(r->expr_);
             }
-            else if (r->tag_ == BoundUnaryOperatorTag::identity)
-            {
-                return +evaluate_expression(r->expr_);
-            }
-            else
-            {
-                // unreachable
-                std::cout << "Evaluator error: invalid unary op tag " << (int)r->tag_ << std::endl;
-                throw "Evaluator error: invalid unary op token tag";
-            }
+            // unreachable
+            std::cout << "Evaluator error: invalid unary op tag " << (int)r->tag_ << std::endl;
+            throw "Evaluator error: invalid unary op token tag";
         }
         else
         {

@@ -6,4 +6,12 @@
 /*123*
 /*121*/
 /2
+true
+false != true
+false && false
+false && true
+true && true
+(false == (!true)) && (3<6)
+false && (!true) && (3>6)
 true+true
+2.3 > 3

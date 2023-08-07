@@ -47,7 +47,7 @@ std::ostream &operator<<(std::ostream &os, Type type)
 enum class BoundUnaryOperatorTag
 {
     identity,
-    negation
+    negation,
 };
 
 enum class BoundBinaryOperatorTag
@@ -55,7 +55,14 @@ enum class BoundBinaryOperatorTag
     addition,
     subtraction,
     multiplication,
-    division
+    division,
+    equal,
+    not_equal,
+        and,
+    or
+    ,
+    greater_than,
+    less_than
 };
 
 // class OperatorTypeSupport
@@ -232,11 +239,11 @@ private:
             else if (p->tok_.tag_ == TokenTag::minus)
                 op = BoundUnaryOperatorTag::negation;
         }
-        // else if (expr->type_ == Type::boolean)
-        // {
-        //     // if (p->tok_.tag_ == TokenTag::exclamation)
-        //     //     op = BoundUnaryOperatorTag::negation;
-        // }
+        else if (expr->type_ == Type::boolean)
+        {
+            if (p->tok_.tag_ == TokenTag::bang)
+                op = BoundUnaryOperatorTag::negation;
+        }
         else
         {
             std::stringstream err;
@@ -255,39 +262,84 @@ private:
         auto right = bind_expression(p->right_);
 
         BoundBinaryOperatorTag tag;
+        bool err_flag = false;
+        Type return_type = left->type_;
         if (left->type_ == right->type_)
         {
-
-            if (left->type_ == Type::integer || left->type_ == Type::floating)
+            if ((left->type_ == Type::integer) || (left->type_ == Type::floating))
             {
                 if (p->tok_.tag_ == TokenTag::plus)
+                {
                     tag = BoundBinaryOperatorTag::addition;
-                if (p->tok_.tag_ == TokenTag::minus)
+                }
+                else if (p->tok_.tag_ == TokenTag::minus)
+                {
                     tag = BoundBinaryOperatorTag::subtraction;
-                if (p->tok_.tag_ == TokenTag::star)
+                }
+                else if (p->tok_.tag_ == TokenTag::star)
+                {
                     tag = BoundBinaryOperatorTag::multiplication;
-                if (p->tok_.tag_ == TokenTag::slash)
+                }
+                else if (p->tok_.tag_ == TokenTag::slash)
+                {
                     tag = BoundBinaryOperatorTag::division;
+                }
+                else if (p->tok_.tag_ == TokenTag::greater_than)
+                {
+                    tag = BoundBinaryOperatorTag::greater_than;
+                    return_type = Type::boolean;
+                }
+                else if (p->tok_.tag_ == TokenTag::less_than)
+                {
+                    tag = BoundBinaryOperatorTag::less_than;
+                    return_type = Type::boolean;
+                }
+                else if (p->tok_.tag_ == TokenTag::equal)
+                {
+                    tag = BoundBinaryOperatorTag::equal;
+                    return_type = Type::boolean;
+                }
+                else if (p->tok_.tag_ == TokenTag::not_equal)
+                {
+                    tag = BoundBinaryOperatorTag::not_equal;
+                    return_type = Type::boolean;
+                }
+                else
+                {
+                    err_flag = true;
+                }
             }
-            // else if (left->type_ == Type::boolean)
-            // {
-
-            // }
+            else if (left->type_ == Type::boolean)
+            {
+                if (p->tok_.tag_ == TokenTag::equal)
+                    tag = BoundBinaryOperatorTag::equal;
+                else if (p->tok_.tag_ == TokenTag::not_equal)
+                    tag = BoundBinaryOperatorTag::not_equal;
+                else if (p->tok_.tag_ == TokenTag::double_ampersand)
+                    tag = BoundBinaryOperatorTag::and;
+                else if (p->tok_.tag_ == TokenTag::double_vertical)
+                    tag = BoundBinaryOperatorTag:: or ;
+                else
+                {
+                    err_flag = true;
+                }
+            }
             else
             {
-                std::stringstream err;
-                err << "Error: Can't use operator " << p->tok_ << " on types '" << left->type_ << "' and '" << right->type_ << "'";
-                diagnostics_.push_back(err.str());
+                err_flag = true;
             }
         }
         else
         {
+            err_flag = true;
+        }
+        if (err_flag)
+        {
             std::stringstream err;
-            err << "Error: Can't use operator " << p->tok_ << " on different types '" << left->type_ << "' and '" << right->type_ << "'";
+            err << "Error: Can't use operator " << p->tok_ << " on types '" << left->type_ << "' and '" << right->type_ << "'";
             diagnostics_.push_back(err.str());
         }
-
-        return std::make_shared<BoundBinaryExpression>(left->type_, left, tag, right);
+        return std::make_shared<BoundBinaryExpression>(return_type, left, tag, right);
     }
 
     std::shared_ptr<BoundNode>

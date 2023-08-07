@@ -7,14 +7,27 @@
 enum class TokenTag
 {
     id,
+
     plus,
     minus,
     star,
     slash,
+
+    bang,
+    greater_than,
+    less_than,
+
+    double_ampersand,
+    double_vertical,
+    equal,
+    not_equal,
+
     parenthesis_open,
     parenthesis_close,
+
     val_int,
     val_double,
+
     eof,
     bad
 };
@@ -29,10 +42,21 @@ std::ostream &operator<<(std::ostream &os, TokenTag tag)
     switch (tag)
     {
         TOKEN_TAG_CASE(id)
+
         TOKEN_TAG_CASE(plus)
         TOKEN_TAG_CASE(minus)
         TOKEN_TAG_CASE(star)
         TOKEN_TAG_CASE(slash)
+
+        TOKEN_TAG_CASE(bang)
+        TOKEN_TAG_CASE(greater_than)
+        TOKEN_TAG_CASE(less_than)
+
+        TOKEN_TAG_CASE(double_ampersand)
+        TOKEN_TAG_CASE(double_vertical)
+        TOKEN_TAG_CASE(equal)
+        TOKEN_TAG_CASE(not_equal)
+
         TOKEN_TAG_CASE(parenthesis_open)
         TOKEN_TAG_CASE(parenthesis_close)
         TOKEN_TAG_CASE(val_int)
@@ -65,11 +89,20 @@ public:
     {
         switch (tag_)
         {
+        case TokenTag::double_ampersand:
+        case TokenTag::double_vertical:
+            return 6;
+        case TokenTag::less_than:
+        case TokenTag::greater_than:
+            return 5;
         case TokenTag::star:
         case TokenTag::slash:
-            return 2;
+            return 3;
         case TokenTag::plus:
         case TokenTag::minus:
+            return 2;
+        case TokenTag::equal:
+        case TokenTag::not_equal:
             return 1;
         default:
             return 0;
@@ -84,7 +117,8 @@ public:
         {
         case TokenTag::plus:
         case TokenTag::minus:
-            return 3;
+        case TokenTag::bang:
+            return 5;
         default:
             return 0;
         }

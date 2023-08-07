@@ -133,6 +133,25 @@ private:
 
             return Token(TokenTag::id, buf, line_, p_);
         }
+        // Two character operators
+        if (peek_ == '&' && peek_ahead() == '&')
+        {
+            std::string str{peek_, peek_ahead()};
+            peek_ = next_input_char();
+            return Token(TokenTag::double_ampersand, str, line_, p_++);
+        }
+        if (peek_ == '=' && peek_ahead() == '=')
+        {
+            std::string str{peek_, peek_ahead()};
+            peek_ = next_input_char();
+            return Token(TokenTag::equal, str, line_, p_++);
+        }
+        if (peek_ == '!' && peek_ahead() == '=')
+        {
+            std::string str{peek_, peek_ahead()};
+            peek_ = next_input_char();
+            return Token(TokenTag::not_equal, str, line_, p_++);
+        }
         // Binary operators
         if (peek_ == '+')
         {
@@ -157,6 +176,18 @@ private:
         if (peek_ == ')')
         {
             return Token(TokenTag::parenthesis_close, peek_, line_, p_++);
+        }
+        if (peek_ == '!')
+        {
+            return Token(TokenTag::bang, peek_, line_, p_++);
+        }
+        if (peek_ == '>')
+        {
+            return Token(TokenTag::greater_than, peek_, line_, p_++);
+        }
+        if (peek_ == '<')
+        {
+            return Token(TokenTag::less_than, peek_, line_, p_++);
         }
         // Treat any unknown character as a bad token
         else
